@@ -221,7 +221,9 @@ def update_a_user(user_id: UUID = Path(
             tags=["Tweets"]
         )
 def home():
-    return {"Twitter API": "Working!"}
+    with open("tweets.json", "r", encoding="utf-8") as f:
+        results = json.loads(f.read())
+        return results
 
 ### Post Tweet
 @app.post(
@@ -231,8 +233,19 @@ def home():
             summary="Post a Tweet",
             tags=["Tweets"]
         )
-def post_tweet():
-    pass
+def post_tweet(tweets: Tweet = Body(...)):
+
+    with open("tweets.json", "r+", encoding="utf-8") as f:
+        results = json.loads(f.read())
+        tweets_dict = tweets.dict()
+        tweets_dict["tweets_id"] = str(tweets_dict["tweet_id"])
+        tweets_dict["Post"] = str(tweets_dict["Post"])
+        results.append(tweets_dict)
+        f.seek(0)
+        f.write(json.dumps(results))
+
+    return tweets
+
 
 ### Show a Tweet
 @app.get(
@@ -242,8 +255,18 @@ def post_tweet():
             summary="Show a Tweet",
             tags=["Tweets"]
         )
-def show_tweet():
-    pass
+def show_tweet(tweet_id: UUID = Path(
+                    ...,
+                    title="User UUID",
+                    description="This is the User UUID",
+                    example="3fa85f64-5717-4562-b3fc-2c963f66afa8")
+                ):
+    with open("tweets.json", "r", encoding="utf-8") as f:
+        results = json.loads(f.read())
+    tweet = [tweet for tweet in results if tweet["tweet_id"] == str(tweet_id)]
+    return  Tweet(tweet_id=tweet[0]["tweet_id"], 
+                email=tweet[0]["tweet_name"], 
+                first_name=tweet[0]["Mensions"])
 
 ### Delete a Tweet
 @app.delete(
@@ -252,8 +275,22 @@ def show_tweet():
                 summary="Delete a Tweet",
                 tags=["Tweets"]
             )
-def delete_tweet():
-    pass
+def delete_tweet(tweet_id: UUID = Path( 
+                        ...,
+                    title="tweet UUID",
+                    description="This is the tweet UUID",
+                    example="3fa85f64-5717-4562-b3fc-2c963f66afa8")):
+    with open("tweets.json", "r", encoding="utf-8") as f:
+        results = json.loads(f.read())
+        results_with_tweet_deleted = [tweet for tweet in results if tweet["user_id"] != str(tweet_id) ]
+        tweet_to_delete = [tweet for tweet in results if tweet["tweet_id"] == str(tweet_id) ]
+    if len(tweet_to_delete) == 0:
+        return {"mensaje": f"The tweet with {tweet_id} not found"}
+    else:    
+        with open("users.json", "w", encoding="utf-8") as f:
+            f.seek(0)
+            f.write(json.dumps(results_with_tweet_deleted))
+        return {"mensaje": f"The tweet with {tweet_id} was deleted"}
 
 ### Update a Tweet
 @app.put(
@@ -263,5 +300,24 @@ def delete_tweet():
             summary="Update a Tweet",
             tags=["Tweets"]
         )
-def update_tweet():
-    pass
+def update_tweet(tweet_id: UUID = Path(
+             ...,
+                    title="tweet UUID",
+                    description="This is the tweet UUID",
+                    example="3fa85f64-5717-4562-b3fc-2c963f66afa8"),
+                    tweet: Tweet = Body(...)):
+    with open("tweets.json", "r", encoding="utf-8") as f:
+        results = json.loads(f.read())
+    tweet_new = tweet.dict()
+    tweet_founded = [tweet for tweet in results if tweet["Tweet_id"] == str(tweet_id)][0]
+    index_tweet = results.index(tweet_founded)
+    results[index_tweet]["tweet's"] = str(tweet_new["tweet"])
+    results[index_tweet]["tweet_name"] = str(tweet_new["tweet_name"])
+    results[index_tweet]["Mensions"] = str(tweet_new["Mensions"])
+    with open("tweets.json", "w", encoding="utf-8") as f:
+        f.write(json.dumps(results))
+
+    return Tweet (tweet_id=str(tweet_id),
+                email=str(tweet_new["tweet's"]),
+                first_name=str(tweet_new["tweet_name"]),
+                last_name=str(tweet_new["mensions"]))
